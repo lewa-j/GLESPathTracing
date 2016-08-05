@@ -12,8 +12,6 @@ import java.util.Random;
 
 public class GLESRenderer implements GLSurfaceView.Renderer
 {
-	
-	
 	final String renderVertexSource =
 	"attribute vec4 vertex;" +
 	"varying vec2 texCoord;" +
@@ -202,30 +200,31 @@ public class GLESRenderer implements GLSurfaceView.Renderer
 	int framebuffer;
 	int renderProgram;
 	int vertAttr;
-	int tracerProgram=0;
+	int tracerProgram = 0;
 	int lightHandle;
 	int eyeHandle;
+	int texSizeHandle;
 	int[] rayHandles;
 	int textureWeightHandle;
 	int timeSinceStartHandle;
 	int glossinessHandle;
 	int sphere1Handle;
-	int[] textures=new int[2];
+	int[] textures = new int[2];
 	
 	int scrW;
 	int scrH;
 	float aspect;
-	int texSize=256;
-	int maxSamples=64;
-	int sampleCount=0;
-	int samplePerFrame=1;
+	int texSize = 256;
+	int maxSamples = 32;
+	int sampleCount = 0;
+	int samplePerFrame = 2;
 	
 	float angleX = 0f;
 	float angleY = 0f;
-	float zoomZ=2.5f;
-	float[] eye={0f,0f,0f};
-	float[] light={0.4f,0.5f,-0.6f};
-	float[] sphere1={0f,-0.75f,0f,0.25f};
+	float zoomZ = 2.5f;
+	float[] eye = {0f,0f,0f};
+	float[] light = {0.4f,0.5f,-0.6f};
+	float[] sphere1 = {0f,-0.75f,0f,0.25f};
 	
 	float glossines = 0.6f;
 	
@@ -237,20 +236,21 @@ public class GLESRenderer implements GLSurfaceView.Renderer
 	float touchY;
 	
 	Random rand;
+	boolean resChanged = false;
 
 	@Override
 	public void onSurfaceCreated(GL10 p1, EGLConfig conf)
 	{
-		rand=new Random();
+		rand = new Random();
 		
-		viewMatrix=new float[16];
-		projectionMatrix=new float[16];
-		viewProjectionMatrix=new float[16];
+		viewMatrix = new float[16];
+		projectionMatrix = new float[16];
+		viewProjectionMatrix = new float[16];
 		
-		int[]ids=new int[1];
+		int[]ids = new int[1];
 		//create vertex buffer
 		glGenBuffers(1,ids,0);
-		vertexBuffer=ids[0];
+		vertexBuffer = ids[0];
 		glBindBuffer(GL_ARRAY_BUFFER,vertexBuffer);
 		FloatBuffer buff=ByteBuffer.allocateDirect(vertices.length*4)
 		.order(ByteOrder.nativeOrder()).asFloatBuffer();
@@ -260,7 +260,7 @@ public class GLESRenderer implements GLSurfaceView.Renderer
 		
 		//create framebuffer
 		glGenRenderbuffers(1,ids,0);
-		framebuffer=ids[0];
+		framebuffer = ids[0];
 		
 		//create textures
 		glGenTextures(2,textures,0);
@@ -281,8 +281,8 @@ public class GLESRenderer implements GLSurfaceView.Renderer
 		glBindTexture(GL_TEXTURE_2D, 0);
 		
 		//create render shader
-		renderProgram=CompileProgram(renderVertexSource,renderFragmentSource);
-		vertAttr=glGetAttribLocation(renderProgram,"vertex");
+		renderProgram = CompileProgram(renderVertexSource,renderFragmentSource);
+		vertAttr = glGetAttribLocation(renderProgram,"vertex");
 		Log.e("Dbg","vertAttr: "+vertAttr);
 		CheckGLError("Create render shader");
 		
@@ -291,18 +291,19 @@ public class GLESRenderer implements GLSurfaceView.Renderer
 		
 		SetObjects();
 		
-		sampleCount=0;
+		sampleCount = 0;
 	}
 	
 	void SetObjects()
 	{
-		if(tracerProgram!=0)
+		if(tracerProgram != 0)
 			glDeleteProgram(tracerProgram);
 		
-		tracerProgram=CompileProgram(tracerVertexSource,makeTracerFragmentSource());
+		tracerProgram = CompileProgram(tracerVertexSource,makeTracerFragmentSource());
 		
 		lightHandle=glGetUniformLocation(tracerProgram,"light");
 		eyeHandle=glGetUniformLocation(tracerProgram,"eye");
+		texSizeHandle = glGetUniformLocation(tracerProgram,"u_texSize");
 		rayHandles=new int[4];
 		rayHandles[0]=glGetUniformLocation(tracerProgram,"ray00");
 		rayHandles[1]=glGetUniformLocation(tracerProgram,"ray01");
@@ -316,15 +317,22 @@ public class GLESRenderer implements GLSurfaceView.Renderer
 		sphere1Handle=glGetUniformLocation(tracerProgram,"sphereCenter1");
 		glEnableVertexAttribArray(vertAttr);
 		
-		sampleCount=0;
+		sampleCount = 0;
+	}
+	
+	public void SetResolution(int ts)
+	{
+		texSize = ts;
+		resChanged = true;
+		sampleCount = 0;
 	}
 
 	@Override
 	public void onSurfaceChanged(GL10 p1, int w, int h)
 	{
-		scrW=w;
-		scrH=h;
-		aspect=(float)h/w;
+		scrW = w;
+		scrH = h;
+		aspect = (float)h/w;
 		//glViewport(0,0,w,h);
 		glViewport(0,0,texSize,texSize);
 	}
@@ -332,6 +340,17 @@ public class GLESRenderer implements GLSurfaceView.Renderer
 	@Override
 	public void onDrawFrame(GL10 p1)
 	{
+		if(resChanged)
+		{
+			glBindTexture(GL_TEXTURE_2D,textures[0]);
+			glTexImage2D(GL_TEXTURE_2D,0,GL_RGB,texSize,texSize,0,GL_RGB,GL_UNSIGNED_BYTE,null);
+		
+			glBindTexture(GL_TEXTURE_2D,textures[1]);
+			glTexImage2D(GL_TEXTURE_2D,0,GL_RGB,texSize,texSize,0,GL_RGB,GL_UNSIGNED_BYTE,null);
+			
+			resChanged = false;
+		}
+		
 		eye[0]=(float)(zoomZ*Math.sin(angleY)*Math.cos(angleX));
 		eye[1]=(float)(zoomZ*Math.sin(angleX));
 		eye[2]=(float)(zoomZ*Math.cos(angleY)*Math.cos(angleX));
@@ -392,6 +411,7 @@ public class GLESRenderer implements GLSurfaceView.Renderer
 		tRay=GetEyeRay(matrix,1,1);
 		glUniform3fv(rayHandles[3],1,tRay,0);
 		
+		glUniform1f(texSizeHandle,texSize);
 		glUniform1f(timeSinceStartHandle,rand.nextFloat()-0.1573f);
 		glUniform1f(textureWeightHandle,(float)sampleCount/(sampleCount+1));
 		glUniform1f(glossinessHandle,glossines);
@@ -404,6 +424,8 @@ public class GLESRenderer implements GLSurfaceView.Renderer
 		glVertexAttribPointer(vertAttr,2,GL_FLOAT,false,0,0);
 		glDrawArrays(GL_TRIANGLE_STRIP,0,4);
 		glBindFramebuffer(GL_FRAMEBUFFER,0);
+		
+		glBindTexture(GL_TEXTURE_2D,0);
 		
 		int t=textures[0];
 		textures[0]=textures[1];
@@ -438,6 +460,7 @@ public class GLESRenderer implements GLSurfaceView.Renderer
 		return tracerFragmentSourceHeader+
 		"uniform vec3 light;"+
 		"uniform vec4 sphereCenter1;" +
+		"uniform float u_texSize;"+
 		intersectCubeSource+
 		normalForCubeSource+
 		intersectSphereSource+
@@ -509,9 +532,9 @@ public class GLESRenderer implements GLSurfaceView.Renderer
 //			[newDiffuseRay, newReflectiveRay, newGlossyRay][material] +
 			//=========
 			"else if(t == tSphere1) normal = normalForSphere(hit, sphereCenter1);"+
-//			newReflectiveRay+
+			newReflectiveRay+
 //			newDiffuseRay+
-			newGlossyRay+
+//			newGlossyRay+
 			//=========
 			"     }" +
 
@@ -559,7 +582,7 @@ public class GLESRenderer implements GLSurfaceView.Renderer
 		"void main()\n" +
 		"{" +
 			"vec3 newLight = light + uniformlyRandomVector(timeSinceStart - 53.0) * " + lightSize + ";" +
-			"vec3 textureCol = texture2D(texture, gl_FragCoord.xy / "+texSize+".0).rgb;" +
+			"vec3 textureCol = texture2D(texture, gl_FragCoord.xy / u_texSize).rgb;" +
 			"gl_FragColor = vec4(mix(calculateColor(eye, initialRay, newLight), textureCol, textureWeight), 1.0);" +
 		"}\n";
 	}

@@ -1,0 +1,53 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    
+    <item
+        android:id="@+id/res"
+        android:title="Resolution" >
+		<menu>
+			<group
+				android:checkableBehavior="single" >
+				<item
+					android:title="0.5x Screen"
+					android:id="@+id/res_05"/>
+				<item
+					android:title="1x Screen"
+					android:id="@+id/res_1"/>
+				<item
+					android:title="64x64"
+					android:id="@+id/res_64"/>
+				<item
+					android:title="128x128"
+					android:id="@+id/res_128"/>
+				<item
+					android:title="256x256"
+					android:checked="true"
+					android:id="@+id/res_256"/>
+				<item
+					android:title="512x512"
+					android:id="@+id/res_512"/>
+			</group>
+		</menu>
+	</item>
+	<item
+        android:id="@+id/bounces"
+        android:title="Bounces">
+		<menu>
+		<group
+			android:checkableBehavior="single" >
+			<item
+				android:title="2"
+				android:id="@+id/bn_2"/>
+			<item
+				android:title="3"
+				android:id="@+id/bn_3"/>
+			<item
+				android:title="4"
+				android:id="@+id/bn_4"/>
+		</group>
+		</menu>
+	</item>
+	<item
+        android:id="@+id/material"
+        android:title="Material"/>
+    
+</menu>
